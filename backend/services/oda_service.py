@@ -3,7 +3,9 @@ from datetime import date
 
 from repositories.oda_repository import OdaRepository
 from utils.dogrulama import pozitif_tamsayi, tarih_coz
-from utils.hatalar import UygulamaHatasi
+from utils.hatalar import BulunamadiHatasi, UygulamaHatasi
+
+GECERLI_DURUMLAR = ("bos", "dolu", "temizlikte", "bakimda")
 
 
 class OdaService:
@@ -29,3 +31,17 @@ class OdaService:
             "oda_sayisi": len(odalar),
             "odalar": [oda.sozluk() for oda in odalar],
         }
+
+    def listele(self, tip_id=None, durum=None):
+        tip_id = pozitif_tamsayi(tip_id, "tip_id")
+        if durum is not None and durum not in GECERLI_DURUMLAR:
+            raise UygulamaHatasi(
+                "'durum' şunlardan biri olmalıdır: " + ", ".join(GECERLI_DURUMLAR) + ".")
+        odalar = self._odalar.tum(tip_id, durum)
+        return {"oda_sayisi": len(odalar), "odalar": [oda.sozluk() for oda in odalar]}
+
+    def getir(self, oda_id):
+        oda = self._odalar.bul_id(oda_id)
+        if oda is None:
+            raise BulunamadiHatasi("Oda bulunamadı.")
+        return oda.sozluk()

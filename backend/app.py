@@ -13,6 +13,7 @@ from flask_jwt_extended import JWTManager
 from config import Config
 from controllers.auth_controller import auth_bp
 from controllers.oda_controller import oda_bp
+from controllers.oda_tipi_controller import oda_tipi_bp
 from utils.hatalar import UygulamaHatasi
 from utils.json_saglayici import OtelJSONSaglayici
 
@@ -28,6 +29,7 @@ def create_app():
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(oda_bp)
+    app.register_blueprint(oda_tipi_bp)
     # Yeni controller'lar buraya eklenecek.
 
     @app.get("/api/saglik")

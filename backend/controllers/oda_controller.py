@@ -20,3 +20,16 @@ def bos_odalar():
         request.args.get("kisi"),
     )
     return jsonify(sonuc)
+
+
+@oda_bp.get("")
+@rol_gerekli("resepsiyon", "yonetici")  # oda durumları personele özeldir
+def odalar():
+    """Örnek: GET /api/odalar?tip_id=2&durum=bos  (ikisi de isteğe bağlı)"""
+    return jsonify(_servis.listele(request.args.get("tip_id"), request.args.get("durum")))
+
+
+@oda_bp.get("/<int:oda_id>")
+@rol_gerekli("resepsiyon", "yonetici")
+def oda_detay(oda_id):
+    return jsonify(_servis.getir(oda_id))
