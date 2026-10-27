@@ -8,6 +8,9 @@ from utils.dogrulama import pozitif_tamsayi, tarih_coz
 from utils.hatalar import BulunamadiHatasi, UygulamaHatasi, YasakHatasi
 
 
+GECERLI_DURUMLAR = ("beklemede", "onayli", "iptal", "tamamlandi")
+
+
 class RezervasyonService:
     def __init__(self, rezervasyon_repo=None, oda_repo=None, misafir_repo=None):
         self._rezervasyonlar = rezervasyon_repo or RezervasyonRepository()
@@ -45,6 +48,38 @@ class RezervasyonService:
         sonuc["gece_sayisi"] = (cikis - giris).days
         sonuc["toplam_tutar"] = self._odalar.oda_tutari(oda.tip_id, giris, cikis)
         return sonuc
+
+    def misafir_rezervasyonlari(self, kullanici, durum=None):
+        """Giriş yapmış misafirin kendi rezervasyonları."""
+        if durum is not None and durum not in GECERLI_DURUMLAR:
+            raise UygulamaHatasi("'durum' şunlardan biri olmalıdır: " + ", ".join(GECERLI_DURUMLAR) + ".")
+        liste = self._rezervasyonlar.misafire_ait(kullanici["misafir_id"], durum)
+        return {"rezervasyon_sayisi": len(liste), "rezervasyonlar": [r.sozluk() for r in liste]}
+
+    def iptal_et(self, kullanici, rezervasyon_id):
+        rezervasyon = self._rezervasyonlar.bul_id(rezervasyon_id)
+        if rezervasyon is None:
+            raise BulunamadiHatasi("Rezervasyon bulunamadı.")
+
+        # Sıra önemli: önce yetki (başkasının rezervasyonu hakkında bilgi sızmasın),
+        # sonra rezervasyonun durumu, en sonda misafire özel tarih kuralı.
+        if kullanici["rol"] == "misafir" and rezervasyon.misafir_id != kullanici["misafir_id"]:
+            raise YasakHatasi("Bu rezervasyon size ait değil.")
+
+        if rezervasyon.durum == "iptal":
+            raise UygulamaHatasi("Rezervasyon zaten iptal edilmiş.")
+        if rezervasyon.durum == "tamamlandi":
+            raise UygulamaHatasi("Tamamlanmış rezervasyon iptal edilemez.")
+        if self._rezervasyonlar.konaklama_var_mi(rezervasyon_id):
+            raise UygulamaHatasi("Check-in yapılmış rezervasyon iptal edilemez.")
+
+        if kullanici["rol"] == "misafir" and rezervasyon.giris_tarihi <= date.today():
+            raise UygulamaHatasi(
+                "Giriş günü gelen rezervasyonu iptal edemezsiniz, lütfen resepsiyonla görüşün.")
+
+        if not self._rezervasyonlar.iptal_et(rezervasyon_id):
+            raise UygulamaHatasi("Rezervasyon iptal edilemedi, durumu değişmiş olabilir.", 409)
+        return self._rezervasyonlar.bul_id(rezervasyon_id).sozluk()
 
     @staticmethod
     def _misafir_ve_durum(kullanici, veri):

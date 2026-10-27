@@ -20,3 +20,16 @@ def rezervasyon_olustur():
         veri = {}
     sonuc = _servis.olustur(mevcut_kullanici(), veri)
     return jsonify(sonuc), 201
+
+
+@rezervasyon_bp.get("/benim")
+@rol_gerekli("misafir")
+def benim_rezervasyonlarim():
+    """Giriş yapmış misafirin kendi rezervasyonları. Örnek: GET /api/rezervasyonlar/benim?durum=onayli"""
+    return jsonify(_servis.misafir_rezervasyonlari(mevcut_kullanici(), request.args.get("durum")))
+
+
+@rezervasyon_bp.post("/<int:rezervasyon_id>/iptal")
+@rol_gerekli()  # misafir yalnızca kendi rezervasyonunu, resepsiyon/yönetici hepsini iptal edebilir
+def rezervasyon_iptal(rezervasyon_id):
+    return jsonify(_servis.iptal_et(mevcut_kullanici(), rezervasyon_id))
