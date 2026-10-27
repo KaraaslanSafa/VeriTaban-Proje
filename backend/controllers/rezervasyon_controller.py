@@ -33,3 +33,23 @@ def benim_rezervasyonlarim():
 @rol_gerekli()  # misafir yalnızca kendi rezervasyonunu, resepsiyon/yönetici hepsini iptal edebilir
 def rezervasyon_iptal(rezervasyon_id):
     return jsonify(_servis.iptal_et(mevcut_kullanici(), rezervasyon_id))
+
+
+@rezervasyon_bp.get("")
+@rol_gerekli("resepsiyon", "yonetici")
+def rezervasyonlar():
+    """Tüm rezervasyonlar (personel). İsteğe bağlı süzgeçler:
+    ?durum=beklemede&misafir_id=3&oda_id=14&giris_baslangic=2026-11-01&giris_bitis=2026-11-30&limit=50&offset=0"""
+    return jsonify(_servis.listele(request.args))
+
+
+@rezervasyon_bp.get("/<int:rezervasyon_id>")
+@rol_gerekli()  # misafir yalnızca kendi rezervasyonunu görebilir
+def rezervasyon_detay(rezervasyon_id):
+    return jsonify(_servis.getir(mevcut_kullanici(), rezervasyon_id))
+
+
+@rezervasyon_bp.post("/<int:rezervasyon_id>/onayla")
+@rol_gerekli("resepsiyon", "yonetici")
+def rezervasyon_onayla(rezervasyon_id):
+    return jsonify(_servis.onayla(rezervasyon_id))

@@ -28,3 +28,23 @@ def pozitif_tamsayi(deger, alan_adi, zorunlu=False):
     if sayi < 1:
         raise UygulamaHatasi(f"'{alan_adi}' 1 veya daha büyük olmalıdır.")
     return sayi
+
+
+def opsiyonel_tarih(deger, alan_adi):
+    """Boşsa None, doluysa date döndürür (süzme parametreleri için)."""
+    if deger is None or str(deger).strip() == "":
+        return None
+    return tarih_coz(deger, alan_adi)
+
+
+def sinirli_tamsayi(deger, alan_adi, varsayilan, en_az, en_cok):
+    """Belirli bir aralıkta tam sayı bekler (sayfalama için). Boşsa varsayılanı döndürür."""
+    if deger is None or str(deger).strip() == "":
+        return varsayilan
+    try:
+        sayi = int(str(deger).strip())
+    except ValueError:
+        raise UygulamaHatasi(f"'{alan_adi}' bir tam sayı olmalıdır.")
+    if not en_az <= sayi <= en_cok:
+        raise UygulamaHatasi(f"'{alan_adi}' {en_az} ile {en_cok} arasında olmalıdır.")
+    return sayi

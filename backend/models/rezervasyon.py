@@ -1,6 +1,7 @@
 """Rezervasyon tablosunun Entity sınıfı (oda numarasıyla birlikte)."""
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
+from typing import Optional
 
 
 @dataclass
@@ -14,6 +15,7 @@ class Rezervasyon:
     kisi_sayisi: int
     durum: str
     olusturma_tarihi: datetime
+    misafir_adi: Optional[str] = None  # personel listelerinde gösterilir
 
     @classmethod
     def satirdan(cls, satir):
@@ -27,6 +29,7 @@ class Rezervasyon:
             kisi_sayisi=satir["kisi_sayisi"],
             durum=satir["durum"],
             olusturma_tarihi=satir["olusturma_tarihi"],
+            misafir_adi=satir.get("misafir_adi"),
         )
 
     def sozluk(self):

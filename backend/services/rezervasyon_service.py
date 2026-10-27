@@ -4,7 +4,7 @@ from datetime import date
 from repositories.misafir_repository import MisafirRepository
 from repositories.oda_repository import OdaRepository
 from repositories.rezervasyon_repository import RezervasyonRepository
-from utils.dogrulama import pozitif_tamsayi, tarih_coz
+from utils.dogrulama import opsiyonel_tarih, pozitif_tamsayi, sinirli_tamsayi, tarih_coz
 from utils.hatalar import BulunamadiHatasi, UygulamaHatasi, YasakHatasi
 
 
@@ -48,6 +48,47 @@ class RezervasyonService:
         sonuc["gece_sayisi"] = (cikis - giris).days
         sonuc["toplam_tutar"] = self._odalar.oda_tutari(oda.tip_id, giris, cikis)
         return sonuc
+
+    def listele(self, filtreler):
+        """Personel için tüm rezervasyonlar. filtreler: istek parametreleri (request.args)."""
+        durum = filtreler.get("durum")
+        if durum is not None and durum not in GECERLI_DURUMLAR:
+            raise UygulamaHatasi("'durum' şunlardan biri olmalıdır: " + ", ".join(GECERLI_DURUMLAR) + ".")
+        misafir_id = pozitif_tamsayi(filtreler.get("misafir_id"), "misafir_id")
+        oda_id = pozitif_tamsayi(filtreler.get("oda_id"), "oda_id")
+        baslangic = opsiyonel_tarih(filtreler.get("giris_baslangic"), "giris_baslangic")
+        bitis = opsiyonel_tarih(filtreler.get("giris_bitis"), "giris_bitis")
+        if baslangic and bitis and bitis < baslangic:
+            raise UygulamaHatasi("'giris_bitis', 'giris_baslangic' tarihinden önce olamaz.")
+        limit = sinirli_tamsayi(filtreler.get("limit"), "limit", 50, 1, 200)
+        offset = sinirli_tamsayi(filtreler.get("offset"), "offset", 0, 0, 1_000_000)
+
+        toplam, liste = self._rezervasyonlar.ara(
+            durum, misafir_id, oda_id, baslangic, bitis, limit, offset)
+        return {"toplam": toplam, "limit": limit, "offset": offset,
+                "rezervasyonlar": [r.sozluk() for r in liste]}
+
+    def getir(self, kullanici, rezervasyon_id):
+        rezervasyon = self._rezervasyonlar.bul_id(rezervasyon_id)
+        if rezervasyon is None:
+            raise BulunamadiHatasi("Rezervasyon bulunamadı.")
+        if kullanici["rol"] == "misafir" and rezervasyon.misafir_id != kullanici["misafir_id"]:
+            raise YasakHatasi("Bu rezervasyon size ait değil.")
+        return rezervasyon.sozluk()
+
+    def onayla(self, rezervasyon_id):
+        """Misafirin açtığı 'beklemede' rezervasyonu personel onaylar."""
+        rezervasyon = self._rezervasyonlar.bul_id(rezervasyon_id)
+        if rezervasyon is None:
+            raise BulunamadiHatasi("Rezervasyon bulunamadı.")
+        if rezervasyon.durum != "beklemede":
+            raise UygulamaHatasi(
+                "Yalnızca beklemedeki rezervasyon onaylanabilir. Şu anki durum: " + rezervasyon.durum + ".")
+        if rezervasyon.giris_tarihi < date.today():
+            raise UygulamaHatasi("Giriş tarihi geçmiş rezervasyon onaylanamaz.")
+        if not self._rezervasyonlar.onayla(rezervasyon_id):
+            raise UygulamaHatasi("Rezervasyon onaylanamadı, durumu değişmiş olabilir.", 409)
+        return self._rezervasyonlar.bul_id(rezervasyon_id).sozluk()
 
     def misafir_rezervasyonlari(self, kullanici, durum=None):
         """Giriş yapmış misafirin kendi rezervasyonları."""
