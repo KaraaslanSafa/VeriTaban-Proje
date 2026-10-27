@@ -34,3 +34,8 @@ class OdaRepository(BaseRepository):
     def bul_id(self, oda_id):
         satir = self._bir(self._ODA_SORGUSU + " WHERE o.oda_id = %s", (oda_id,))
         return Oda.satirdan(satir) if satir else None
+
+    def oda_tutari(self, tip_id, giris, cikis):
+        """fn_oda_tutari veritabanı fonksiyonu: sezon fiyatlarına göre toplam oda ücreti."""
+        satir = self._bir("SELECT fn_oda_tutari(%s, %s, %s) AS tutar", (tip_id, giris, cikis))
+        return satir["tutar"]
